@@ -1,0 +1,27 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        
+        <link href="style.css" rel="stylesheet"/>
+    </head>
+    
+    <body>
+        <h1><center>Let's do this!</center></h1>
+        <br><br>
+
+
+        <h2>Upload the file:</h2>
+
+        <form method="POST" enctype="multipart/form-data" id="formo">
+            <label for="img">Select image:</label>
+            <input type="file" id="img" name="img" accept="image/*" onchange="readURL(this);" multiple>
+            <div id="imgs"></div>
+            <br /><br /><br />
+
+            <input type="submit" name="submit">
+        </form>
+        <div id="root"></div>
+        <script type="text/javascript" src="scripts.js"></script>
+    </body>
+</html>
