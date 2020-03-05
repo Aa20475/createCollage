@@ -79,6 +79,59 @@ def rec_faces(files,p1,p2):
 		return 0
 
 
+def yolo_rec(img,p):
+	labelsPath = os.path.sep.join([p, "coco.names"])
+	LABELS = open(labelsPath).read().strip().split("\n")
+	n1 =0
+	n2 =0
+	n3 =0
+	ANIMALS = ["bird","cat","dog","horse","sheep","cow","elephant","bear","zebra","giraffe"]
+	np.random.seed(42)
+	COLORS = np.random.randint(0, 255, size=(len(LABELS), 3),dtype="uint8")
+	weightsPath = os.path.sep.join([p, "yolov3.weights"])
+	configPath = os.path.sep.join([p, "yolov3.cfg"])
+	net = cv2.dnn.readNetFromDarknet(configPath, weightsPath)
+	image = cv2.imread(img)
+	(H, W) = image.shape[:2]
+	ln = net.getLayerNames()
+	ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
+	blob = cv2.dnn.blobFromImage(image, 1 / 255.0, (416, 416),swapRB=True, crop=False)
+	net.setInput(blob)
+	layerOutputs = net.forward(ln)
+	boxes = []
+	confidences = []
+	classIDs = []
+
+	for output in layerOutputs:
+		for detection in output:
+			scores = detection[5:]
+			classID = np.argmax(scores)
+			confidence = scores[classID]
+			if confidence > 0.5:
+				box = detection[0:4] * np.array([W, H, W, H])
+				(centerX, centerY, width, height) = box.astype("int")
+				x = int(centerX - (width / 2))
+				y = int(centerY - (height / 2))
+
+				boxes.append([x, y, int(width), int(height)])
+				confidences.append(float(confidence))
+				classIDs.append(classID)
+
+	idxs = cv2.dnn.NMSBoxes(boxes, confidences, 0.5,
+		0.3)
+
+	if len(idxs) > 0:
+		for i in idxs.flatten():
+			
+			if(LABELS[classIDs[i]]=="person"):
+				n1+=1
+			elif LABELS[classIDs[i]] in ANIMALS:
+				n2+=1
+			else:
+				n3+=1
+	return n1,n2,n3
+
+
 
 @app.route('/createCollage', methods=['POST','GET'])
 def upload_file():
@@ -109,6 +162,17 @@ def upload_file():
 		return resp
 	else:
 		return "<h1><center> YO!</center></h1>"
+
+	
+@app.route('/getImageDetails', methods=['POST'])
+def process_files():
+	file = request.files['files']
+	
+	filename = secure_filename(file.filename)
+	file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+	h,a,o = yolo_rec(os.path.join(app.config['UPLOAD_FOLDER'], filename),app.config['MODEL_LOC'])
+	return jsonify(human_faces=h,objects=o,animals=a)
+
 
 if __name__ == "__main__":
     app.run(debug = True)
